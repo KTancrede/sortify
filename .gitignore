@@ -1,0 +1,30 @@
+# === Eclipse ===
+.classpath
+.project
+.settings/
+
+# === Maven ===
+target/
+
+# === OS ===
+.DS_Store
+Thumbs.db
+
+# === Logs ===
+*.log
+
+# === IntelliJ IDEA (si jamais tu l'ouvres là-dedans un jour) ===
+*.iml
+.idea/
+
+# === Java FX app builds ===
+bin/
+build/
+
+# === VS Code (au cas où) ===
+.vscode/
+
+# === Autres fichiers temporaires ===
+*.tmp
+*.bak
+*.swp
