@@ -1,0 +1,134 @@
+/* Racine de l'application */
+.root-pane {
+    -fx-background: linear-gradient(to bottom right, #75bc7f, #4aa96c);
+}
+
+/* Header supérieur */
+.top-header {
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+}
+.user-info-label {
+    -fx-font-size: 16px;
+}
+.info-icon {
+    -fx-font-size: 14px;
+    -fx-cursor: hand;
+}
+
+/* Toggle Auto-Unlike */
+.auto-unlike-toggle {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 6 10;
+    -fx-cursor: hand;
+    -fx-font-size: 12px;
+}
+.auto-unlike-toggle:hover {
+    -fx-background-color: #f0f0f0;
+}
+.auto-unlike-toggle:selected {
+    -fx-background-color: #e0e0e0;
+}
+
+/* Bouton '+ Créer une playlist' */
+.create-playlist-button {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-padding: 8 12;
+    -fx-cursor: hand;
+    -fx-font-size: 14px;
+}
+.create-playlist-button:hover {
+    -fx-background-color: #f0f0f0;
+}
+
+/* Conteneurs de playlists */
+.playlist-container {
+    -fx-spacing: 10;
+    -fx-alignment: center;
+}
+
+/* Carte de playlist */
+.playlist-card {
+    -fx-background-color: white;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: #ccc;
+    -fx-padding: 10;
+}
+.playlist-label {
+    -fx-font-size: 12px;
+}
+
+/* Carte de piste centrale (agrandie de 15%) */
+.track-card {
+    -fx-background-color: white;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-border-color: #ddd;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 8, 0, 0, 4);
+    -fx-padding: 23;             /* 20 * 1.15 */
+    -fx-max-height: 345px;       /* 300 * 1.15 */
+    -fx-max-width: 403px;        /* 350 * 1.15 */
+}
+.track-title {
+    -fx-font-size: 18px;         /* 16 * 1.15 ≈ 18 */
+    -fx-font-weight: bold;
+}
+.track-artist, .track-album, .track-duration {
+    -fx-text-fill: #555;
+    -fx-font-size: 14px;         /* 12 * 1.15 ≈ 14 */
+}
+
+/* Formulaire de création de playlist */
+#playlist-form {
+    -fx-spacing: 10;
+    -fx-alignment: center-left;
+    -fx-padding: 10;
+    -fx-background-color: rgba(255,255,255,0.8);
+    -fx-background-radius: 8;
+}
+#playlist-form .text-field {
+    -fx-background-color: white;
+    -fx-border-color: #ccc;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+    -fx-font-size: 12px;
+    -fx-padding: 6 8;
+    -fx-pref-width: 150px;
+}
+#playlist-form .check-box {
+    -fx-font-size: 12px;
+}
+.submit-playlist-button {
+    -fx-background-color: #4aa96c;
+    -fx-text-fill: white;
+    -fx-border-radius: 5;
+    -fx-background-radius: 5;
+    -fx-font-size: 14px;
+    -fx-padding: 8 12;
+    -fx-cursor: hand;
+}
+.submit-playlist-button:hover {
+    -fx-background-color: #3a8f5a;
+}
+
+/* Boutons généraux */
+.unlike-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: red;
+    -fx-font-size: 16px;
+}
+.unlike-button:hover {
+    -fx-scale-x: 1.4;
+    -fx-scale-y: 1.4;
+    -fx-cursor: hand;
+}
+.play-button {
+    -fx-font-size: 14px;
+}
