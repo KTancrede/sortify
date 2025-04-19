@@ -103,19 +103,6 @@ L’application utilise l’API [Spotify Web API](https://developer.spotify.com/
 
 ---
 
-## 💡 Astuce de dev
-
-- Pour forcer une nouvelle autorisation, supprime le token ou lance avec `show_dialog = true`.
-- Le fichier `.gitignore` ignore les dossiers `target/` et `.settings/`.
-
----
-
-## 🙏 Remerciements
-
-- [Spotify Web API Java](https://github.com/thelinmichael/spotify-web-api-java)
-- Icônes : [Google Fonts](https://fonts.google.com/icons), [FlatIcon](https://www.flaticon.com/)
-
----
 
 ## 📜 Licence
 
@@ -123,4 +110,4 @@ Ce projet est open-source sous licence MIT.
 
 ---
 
-**Projet développé avec ❤️ par [Tancrède Kowal](https://github.com/KTancrede)**
+**Projet développé par [Tancrède Kowal](https://github.com/KTancrede)**
