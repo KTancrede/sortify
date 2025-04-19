@@ -25,6 +25,7 @@ public class SpotifyTrackFetcher {
 	}
 
     public List<TrackInfo> getLikedTracks() {
+    	trackList.clear();
         int offset = 0;
         int limit = 50;
         boolean hasMore = true;
@@ -43,15 +44,23 @@ public class SpotifyTrackFetcher {
                 for (SavedTrack musique : items) {
                     Track m = musique.getTrack();
 
+                    // Sécurité sur image
+                    String imageUrl = null;
+                    if (m.getAlbum() != null && m.getAlbum().getImages() != null && m.getAlbum().getImages().length > 0) {
+                        imageUrl = m.getAlbum().getImages()[0].getUrl();
+                    }
+
+                    // Construction du TrackInfo
                     TrackInfo trackInfo = new TrackInfo(
-                            m.getName(),
-                            m.getArtists(), // tu peux formater plus tard
-                            m.getPreviewUrl(), // lien de 30 secondes pour ecouter la musique
-                            m.getAlbum().getImages()[0].getUrl(),
-                            m.getId(),
-                            m.getAlbum(),
-                            m.getDurationMs() // La durée en ms
+                        m.getName(),                      // Titre
+                        m.getArtists(),                   // ArtistSimplified[]
+                        m.getPreviewUrl(),               // preview (peut être null)
+                        imageUrl,                         // URL de l’image (peut être null)
+                        m.getId(),                        // ID de la track
+                        m.getAlbum(),                     // AlbumSimplified
+                        m.getDurationMs()                // Durée en ms
                     );
+
 
                     trackList.add(trackInfo);
                 }

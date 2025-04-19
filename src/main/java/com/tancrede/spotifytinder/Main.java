@@ -44,7 +44,7 @@ public class Main {
             List<PlaylistInfo> playlists = playlistManager.getAllPlaylists();
 
             // Controller
-            TinderController controller = new TinderController(userInfo, tracks, playlists, playlistManager);
+            TinderController controller = new TinderController(userInfo, tracks, playlists, playlistManager,trackFetcher);
             TinderUI.setController(controller);
 
             // Lancement de l'UI

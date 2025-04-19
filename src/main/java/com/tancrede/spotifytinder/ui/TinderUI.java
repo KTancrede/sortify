@@ -27,47 +27,42 @@ public class TinderUI extends Application {
     private VBox rightPlaylistsBox;
     private Label userInfoLabel;
 
-    private int currentTrackIndex = 0;
-    private VBox trackCardBox;
     
+    private VBox trackCardBox;
+
     public static void setController(TinderController c) {
         controller = c;
     }
 
-    
-
+    // === TOP HEADER ===
     private Node buildTopHeader() {
         userInfoLabel = new Label();
         userInfoLabel.setStyle("-fx-font-size: 16px;");
         updateUserInfoLabel();
 
         ToggleButton autoUnlikeToggle = new ToggleButton("Auto-Unlike 🚫❤️");
-        // Icône d'info à côté
-        Label infoIcon = new Label("ℹ️");
-        infoIcon.setStyle("-fx-font-size: 14px; -fx-cursor: hand;");
-
-        // Tooltip explicatif
-        Tooltip infoTooltip = new Tooltip("Si activé, la musique sera retirée des titres likés après l’avoir ajoutée à une playlist.");
-        Tooltip.install(infoIcon, infoTooltip);
-
         autoUnlikeToggle.setStyle("-fx-font-size: 12px;");
         autoUnlikeToggle.setSelected(false);
 
-        autoUnlikeToggle.setOnAction(e -> {
-            controller.setAutoUnlike(autoUnlikeToggle.isSelected());
-            System.out.println("[Auto-Unlike] " + (autoUnlikeToggle.isSelected() ? "Activé" : "Désactivé"));
+        autoUnlikeToggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
+            controller.setAutoUnlike(newVal);
+            System.out.println("[Auto-Unlike] " + (newVal ? "Activé" : "Désactivé"));
         });
 
-        Region spacer = new Region(); // pour pousser à droite
+        Label infoIcon = new Label("ℹ️");
+        infoIcon.setStyle("-fx-font-size: 14px; -fx-cursor: hand;");
+        Tooltip tooltip = new Tooltip("Si activé, la musique sera retirée des titres likés après l’avoir ajoutée à une playlist.");
+        Tooltip.install(infoIcon, tooltip);
+
+        Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
-        HBox topBox = new HBox(10, userInfoLabel, spacer, autoUnlikeToggle,infoIcon);
+        HBox topBox = new HBox(10, userInfoLabel, spacer, autoUnlikeToggle, infoIcon);
         topBox.setPadding(new Insets(10));
         topBox.setAlignment(Pos.CENTER_LEFT);
 
         return topBox;
     }
-
 
     private void updateUserInfoLabel() {
         userInfoLabel.setText("👋 Salut " + controller.getUserInfo().getDisplayName() +
@@ -79,7 +74,7 @@ public class TinderUI extends Application {
         leftPlaylistsBox = new VBox(10);
         leftPlaylistsBox.setPadding(new Insets(10));
         leftPlaylistsBox.setAlignment(Pos.CENTER);
-        VBox.setVgrow(leftPlaylistsBox, Priority.ALWAYS); 
+        VBox.setVgrow(leftPlaylistsBox, Priority.ALWAYS);
         return leftPlaylistsBox;
     }
 
@@ -97,52 +92,38 @@ public class TinderUI extends Application {
         bottomContainer.setPadding(new Insets(10));
 
         Button toggleFormButton = new Button("+ Créer une playlist");
-        toggleFormButton.setStyle("-fx-font-size: 14px;");
-
         HBox formBox = new HBox(10);
-        formBox.setAlignment(Pos.CENTER_LEFT);
         formBox.setVisible(false);
         formBox.setManaged(false);
 
         TextField titleField = new TextField();
-        titleField.setPromptText("Nom de la playlist");
-        titleField.setPrefWidth(200);
-
+        titleField.setPromptText("Nom");
         TextField descriptionField = new TextField();
         descriptionField.setPromptText("Description");
-        descriptionField.setPrefWidth(250);
-
-        CheckBox publicCheckBox = new CheckBox("Publique");
-
+        CheckBox publicBox = new CheckBox("Publique");
         Button createButton = new Button("Créer");
 
         createButton.setOnAction(e -> {
-            String title = titleField.getText();
-            String description = descriptionField.getText();
-            boolean isPublic = publicCheckBox.isSelected();
-
-            if (!title.isEmpty()) {
-                controller.createNewPlaylist(title, description, isPublic);
+            if (!titleField.getText().isEmpty()) {
+                controller.createNewPlaylist(titleField.getText(), descriptionField.getText(), publicBox.isSelected());
                 titleField.clear();
                 descriptionField.clear();
-                publicCheckBox.setSelected(false);
+                publicBox.setSelected(false);
                 updatePlaylistsUI();
                 updateUserInfoLabel();
-            } else {
-                System.out.println("❌ Titre obligatoire.");
             }
         });
 
-        formBox.getChildren().addAll(titleField, descriptionField, publicCheckBox, createButton);
-
         toggleFormButton.setOnAction(e -> {
-            boolean visible = formBox.isVisible();
-            formBox.setVisible(!visible);
-            formBox.setManaged(!visible);
-            toggleFormButton.setText(visible ? "+ Créer une playlist" : "Retour");
+            boolean visible = !formBox.isVisible();
+            formBox.setVisible(visible);
+            formBox.setManaged(visible);
+            toggleFormButton.setText(visible ? "Retour" : "+ Créer une playlist");
         });
 
+        formBox.getChildren().addAll(titleField, descriptionField, publicBox, createButton);
         bottomContainer.getChildren().addAll(toggleFormButton, formBox);
+
         return bottomContainer;
     }
 
@@ -166,14 +147,8 @@ public class TinderUI extends Application {
         cardBox.setAlignment(Pos.CENTER);
         cardBox.setPrefWidth(150);
         cardBox.setMinHeight(145);
-        cardBox.setMaxHeight(145);
-        cardBox.setStyle(
-            "-fx-border-color: #ccc; " +
-            "-fx-border-radius: 10; " +
-            "-fx-background-radius: 10; " +
-            "-fx-background-color: white; " +
-            "-fx-padding: 10;"
-        );
+        cardBox.setStyle("-fx-border-color: #ccc; -fx-background-color: white; -fx-border-radius: 10; -fx-padding: 10;");
+
         cardBox.setOnDragOver(e -> {
             if (e.getGestureSource() != cardBox && e.getDragboard().hasString()) {
                 e.acceptTransferModes(TransferMode.MOVE);
@@ -194,14 +169,19 @@ public class TinderUI extends Application {
 
             if (db.hasString()) {
                 String trackId = db.getString();
+
                 controller.addTrackToPlaylist(trackId, playlist.getId());
 
                 if (controller.isAutoUnlikeEnabled()) {
-                    controller.unlikeTrack(trackId);             // API Spotify
-                    controller.removeTrackFromLiked(trackId);    // Mémoire locale
-                    updateUserInfoLabel();                       // Rafraîchit l’UI
-                    updateTrackCard();                           // Met à jour la carte
+                    controller.unlikeTrack(trackId);
+                    controller.nextTrack();// API + mémoire
+                } else {
+                    controller.nextTrack();                     // 👉 on passe manuellement
                 }
+
+                // UI update
+                updateUserInfoLabel();
+                updateTrackCard();
 
                 success = true;
             }
@@ -210,93 +190,97 @@ public class TinderUI extends Application {
             e.consume();
         });
 
-        ImageView imageView;
-        if (playlist.getImageUrl() != null && !playlist.getImageUrl().isEmpty()) {
-            imageView = new ImageView(new Image(playlist.getImageUrl(), 90, 90, true, true));
-        } else {
-            imageView = new ImageView(new Image(getClass().getResourceAsStream("/images/default_playlist.png"), 80, 80, true, true));
-        }
-        imageView.setFitWidth(80);
-        imageView.setFitHeight(80);
+//        if (controller.getCurrentTrackIndex() >= controller.getLikedTracks().size()) {
+//        	controller.getCurrentTrackIndex()= 0; // évite un IndexOutOfBounds si on a supprimé le dernier
+//        }
+
+        // Image
+        ImageView imageView = new ImageView(
+                playlist.getImageUrl() != null && !playlist.getImageUrl().isEmpty()
+                        ? new Image(playlist.getImageUrl(), 90, 90, true, true)
+                        : new Image(getClass().getResourceAsStream("/images/default_playlist.png"), 90, 90, true, true)
+        );
         imageView.setPreserveRatio(false);
 
+        // Delete
         Button deleteButton = new Button("✖");
-        deleteButton.setStyle("""
-            -fx-background-color: transparent;
-            -fx-text-fill: red;
-            -fx-font-size: 16px;
-            -fx-cursor: hand;
-            -fx-padding: 0;
-        """);
+        deleteButton.setStyle("-fx-background-color: transparent; -fx-text-fill: red; -fx-font-size: 16px;");
         deleteButton.setOnMouseEntered(e -> {
             deleteButton.setScaleX(1.4);
             deleteButton.setScaleY(1.4);
         });
+
         deleteButton.setOnMouseExited(e -> {
             deleteButton.setScaleX(1.0);
             deleteButton.setScaleY(1.0);
         });
 
+
         deleteButton.setOnAction(e -> {
             Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirmation");
-            confirm.setHeaderText("Suppression de playlist");
-            confirm.setContentText("Êtes-vous sûr de vouloir supprimer \"" + playlist.getName() + "\" ?");
+            confirm.setTitle("Supprimer playlist");
+            confirm.setHeaderText("Supprimer \"" + playlist.getName() + "\" ?");
+            confirm.setContentText("Tu es sûr ?");
 
             confirm.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.OK) {
-                    controller.deletePlaylist(playlist.getId());
-                    updatePlaylistsUI();
-                    updateUserInfoLabel();
+                    Alert askAdd = new Alert(Alert.AlertType.CONFIRMATION);
+                    askAdd.setTitle("Ajouter les titres ?");
+                    askAdd.setContentText("Ajouter les titres de cette playlist à tes musiques likées ?");
+                    askAdd.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO, ButtonType.CANCEL);
+
+                    askAdd.showAndWait().ifPresent(choice -> {
+                        if (choice == ButtonType.YES) {
+                            controller.transferPlaylistToLiked(playlist.getId());
+                        }
+                        if (choice != ButtonType.CANCEL) {
+                            controller.deletePlaylist(playlist.getId());
+                            updatePlaylistsUI();
+                            updateTrackCard();
+                            updateUserInfoLabel();
+                        }
+                    });
                 }
             });
         });
 
-        StackPane imageContainer = new StackPane();
+        StackPane imageContainer = new StackPane(imageView, deleteButton);
         StackPane.setAlignment(deleteButton, Pos.TOP_RIGHT);
-        imageContainer.getChildren().addAll(imageView, deleteButton);
 
         Label label = new Label(playlist.getName());
-        label.setMaxWidth(100);
         label.setWrapText(true);
-        label.setAlignment(Pos.CENTER);
-        label.setStyle("-fx-font-size: 12px; -fx-text-alignment: center;");
+        label.setMaxWidth(100);
+        label.setStyle("-fx-font-size: 12px;");
 
         cardBox.getChildren().addAll(imageContainer, label);
         return cardBox;
     }
-    
+
     private Node buildTrackCardWithNavigation() {
         HBox container = new HBox(20);
         container.setAlignment(Pos.CENTER);
 
-        Button prevBtn = new Button("⬅");
-        prevBtn.setOnAction(e -> {
-            int size = controller.getLikedTracks().size();
-            if (size > 0) {
-                currentTrackIndex = (currentTrackIndex - 1 + size) % size;
-                updateTrackCard();
-            }
+        Button prev = new Button("⬅");
+        prev.setOnAction(e -> {
+            controller.previousTrack();
+            updateTrackCard();
         });
 
-        Button nextBtn = new Button("➡");
-        nextBtn.setOnAction(e -> {
-            int size = controller.getLikedTracks().size();
-            if (size > 0) {
-                currentTrackIndex = (currentTrackIndex + 1) % size;
-                updateTrackCard();
-            }
+        Button next = new Button("➡");
+        next.setOnAction(e -> {
+            controller.nextTrack();
+            updateTrackCard();
         });
 
-
-        trackCardBox = new VBox(); // initialisée ici
+        trackCardBox = new VBox();
         trackCardBox.setAlignment(Pos.CENTER);
-        updateTrackCard(); // 👈 on affiche le premier morceau
 
-        container.getChildren().addAll(prevBtn, trackCardBox, nextBtn);
+        updateTrackCard();
+
+        container.getChildren().addAll(prev, trackCardBox, next);
         return container;
     }
-    
+
     private void updateTrackCard() {
         trackCardBox.getChildren().clear();
 
@@ -305,23 +289,14 @@ public class TinderUI extends Application {
             return;
         }
 
-        TrackInfo track = controller.getLikedTracks().get(currentTrackIndex);
+        TrackInfo track = controller.getCurrentTrack();
+        System.out.println("[DEBUG] updateTrackCard() → Track shown: " + track.getTitle());
 
-        // === Image de l'album ===
         ImageView cover = new ImageView(new Image(track.getImageUrl(), 250, 250, true, true));
         cover.setPreserveRatio(true);
 
-        // === Bouton unlike (croix rouge) ===
         Button unlikeBtn = new Button("✖");
-        unlikeBtn.setStyle("""
-            -fx-background-color: transparent;
-            -fx-text-fill: red;
-            -fx-font-size: 20px;
-            -fx-cursor: hand;
-            -fx-padding: 0;
-            
-        """);
-
+        unlikeBtn.setStyle("-fx-background-color: transparent; -fx-text-fill: red; -fx-font-size: 20px;");
         unlikeBtn.setOnMouseEntered(e -> {
             unlikeBtn.setScaleX(1.4);
             unlikeBtn.setScaleY(1.4);
@@ -332,16 +307,14 @@ public class TinderUI extends Application {
         });
 
         unlikeBtn.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Confirmation");
-            confirm.setHeaderText("Supprimer cette musique likée ?");
-            confirm.setContentText("Tu vas retirer \"" + track.getTitle() + "\" de tes titres likés.");
-
-            confirm.showAndWait().ifPresent(response -> {
+            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
+            alert.setTitle("Supprimer musique");
+            alert.setHeaderText("Supprimer \"" + track.getTitle() + "\" de tes titres likés ?");
+            alert.showAndWait().ifPresent(response -> {
                 if (response == ButtonType.OK) {
                     controller.unlikeTrack(track.getTrackId());
                     updateUserInfoLabel();
-                    updateTrackCard(); // passe au morceau suivant
+                    updateTrackCard();
                 }
             });
         });
@@ -349,57 +322,59 @@ public class TinderUI extends Application {
         StackPane imageContainer = new StackPane(cover, unlikeBtn);
         StackPane.setAlignment(unlikeBtn, Pos.TOP_RIGHT);
 
-     // === Infos texte ===
         Label title = new Label(track.getTitle());
         title.setStyle("-fx-font-size: 18px; -fx-font-weight: bold;");
+        title.setWrapText(true);
+        title.setPrefHeight(40);
+        title.setMaxHeight(40);
+        title.setAlignment(Pos.CENTER); // ✅ centre le texte
+        title.setMaxWidth(Double.MAX_VALUE); // ✅ permet le centrage
+        title.setEllipsisString("...");
 
-        Label artists = new Label(track.getArtist());
-        artists.setStyle("-fx-font-size: 14px; -fx-text-fill: #666;");
+        Label artist = new Label(track.getArtist());
+        artist.setStyle("-fx-text-fill: #666;");
+        artist.setWrapText(true);
+        artist.setPrefHeight(40);
+        artist.setMaxHeight(40);
+        artist.setAlignment(Pos.CENTER);
+        artist.setMaxWidth(Double.MAX_VALUE);
+        artist.setEllipsisString("...");
 
-        // Album
         Label album = new Label("Album : " + track.getAlbum().getName());
-        album.setStyle("-fx-font-size: 13px; -fx-text-fill: #555;");
+        album.setStyle("-fx-text-fill: #555;");
+        album.setAlignment(Pos.CENTER);
+        album.setMaxWidth(Double.MAX_VALUE);
 
-        // Durée en mm:ss
-        int durationMs = track.getDuree();
-        int minutes = durationMs / 60000;
-        int seconds = (durationMs % 60000) / 1000;
-        String durationFormatted = String.format("%d:%02d", minutes, seconds);
+        Label duration = new Label("Durée : " + String.format("%d:%02d", track.getDuree() / 60000, (track.getDuree() % 60000) / 1000) + " min");
+        duration.setStyle("-fx-text-fill: #555;");
+        duration.setAlignment(Pos.CENTER);
+        duration.setMaxWidth(Double.MAX_VALUE);
 
-        Label durationLabel = new Label("Durée : " + durationFormatted + " min");
-        durationLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: #555;");
-        // === Bouton play
-        Button playBtn = new Button("▶️ Play 5s");
-        if (track.getPreviewUrl() == null) {
-            playBtn.setDisable(true);
-            playBtn.setText("🔇 Pas d'extrait");
-        }
 
-        // === Bloc carte complet
-        VBox box = new VBox(10, imageContainer, title, artists, album, durationLabel, playBtn);
+        Button playBtn = new Button(track.getPreviewUrl() == null ? "🔇 Pas d'extrait" : "▶️ Play 5s");
+        playBtn.setDisable(track.getPreviewUrl() == null);
 
-        box.setPadding(new Insets(20));
-        box.setStyle("-fx-border-color: #ccc; -fx-border-radius: 10; -fx-background-radius: 10; -fx-background-color: white;");
-        box.setAlignment(Pos.CENTER);
+        VBox card = new VBox(10, imageContainer, title, artist, album, duration, playBtn);
+        card.setPadding(new Insets(20));
+        card.setStyle("-fx-background-color: white; -fx-border-radius: 10; -fx-border-color: #ccc;");
+        card.setAlignment(Pos.CENTER);
 
-        // === Drag & Drop
-        box.setOnDragDetected(e -> {
-            Dragboard db = box.startDragAndDrop(TransferMode.MOVE);
+        // 💡 Taille fixe de la carte pour empêcher les "sauts"
+        card.setPrefSize(300, 500); // tu peux ajuster à ta guise
+        card.setMaxSize(300, 500);
+        card.setMinSize(300, 500);
+
+
+        card.setOnDragDetected(e -> {
+            Dragboard db = card.startDragAndDrop(TransferMode.MOVE);
             ClipboardContent content = new ClipboardContent();
             content.putString(track.getTrackId());
             db.setContent(content);
             e.consume();
         });
 
-        box.setOnDragDone(e -> {
-            System.out.println("🎵 Drag terminé");
-            e.consume();
-        });
-
-        trackCardBox.getChildren().add(box);
+        trackCardBox.getChildren().add(card);
     }
-
-
 
     @Override
     public void start(Stage primaryStage) {
@@ -412,25 +387,29 @@ public class TinderUI extends Application {
         root.setCenter(buildTrackCardWithNavigation());
         root.setBottom(buildPlaylistCreator());
 
-        // Couleur de fond
         root.setStyle("-fx-background-color: #75bc7f;");
-
-        updatePlaylistsUI(); // Affiche les playlists au démarrage
+        updatePlaylistsUI();
 
         Scene scene = new Scene(root, 1000, 600);
 
-        // Icône (assure-toi que le SVG est bien dans /resources/images/logoo.svg)
         primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.svg")));
-
         primaryStage.setTitle("Sortify 🎶");
         primaryStage.setScene(scene);
+
+        // ✅ Full screen "à la Windows" = maximisé
+        primaryStage.setMaximized(true);
+
+        // ✅ Garde possibilité de resize libre
+        primaryStage.setResizable(true);
+
+        // ✅ Optionnel : taille minimale pour l’UI
         primaryStage.setMinWidth(800);
         primaryStage.setMinHeight(500);
+
         primaryStage.show();
     }
 
-    
-    
+
     public static void main(String[] args) {
         launch(args);
     }

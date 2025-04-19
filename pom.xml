@@ -53,12 +53,6 @@
                 <version>0.0.8</version>
                 <configuration>
                     <mainClass>com.tancrede.spotifytinder.Main</mainClass>
-                    <args>
-                        <arg>--module-path</arg>
-                        <arg>${path.to.fx}</arg>
-                        <arg>--add-modules</arg>
-                        <arg>javafx.controls,javafx.fxml</arg>
-                    </args>
                 </configuration>
             </plugin>
 

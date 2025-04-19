@@ -122,6 +122,73 @@ public class SpotifyPlaylistManager {
             System.out.println("❌ Erreur lors du unlike : " + e.getMessage());
         }
     }
+    
+    
+    public List<String> getTracksFromPlaylist(String playlistId) {
+        List<String> trackIds = new ArrayList<>();
+
+        int offset = 0;
+        int limit = 100;
+        boolean hasMore = true;
+
+        while (hasMore) {
+            try {
+                var request = spotifyApi.getPlaylistsItems(playlistId)
+                                        .limit(limit)
+                                        .offset(offset)
+                                        .build();
+                var response = request.execute();
+                var items = response.getItems();
+
+                for (var item : items) {
+                    var track = (se.michaelthelin.spotify.model_objects.specification.Track) item.getTrack();
+                    if (track != null) {
+                        trackIds.add(track.getId());
+                    }
+                }
+
+                hasMore = response.getNext() != null;
+                offset += limit;
+
+            } catch (Exception e) {
+                System.out.println("❌ Erreur récupération morceaux de playlist : " + e.getMessage());
+                break;
+            }
+        }
+
+        return trackIds;
+    }
+    
+    public void likeTracks(List<String> trackIds) {
+        try {
+            for (int i = 0; i < trackIds.size(); i += 50) {
+                int end = Math.min(i + 50, trackIds.size());
+                List<String> batch = trackIds.subList(i, end);
+
+                spotifyApi.saveTracksForUser(batch.toArray(new String[0]))
+                          .build()
+                          .execute();
+            }
+            System.out.println("❤️ Tous les morceaux ont été ajoutés aux musiques likées !");
+        } catch (Exception e) {
+            System.out.println("❌ Erreur lors du like en masse : " + e.getMessage());
+        }
+    }
+
+    public void transferPlaylistToLiked(String playlistId) {
+        try {
+            var items = spotifyApi.getPlaylistsItems(playlistId).limit(100).build().execute().getItems();
+            for (var item : items) {
+                if (item.getTrack() != null && item.getTrack().getId() != null) {
+                    spotifyApi.saveTracksForUser(new String[] { item.getTrack().getId() }).build().execute();
+                    System.out.println("✅ Ajouté aux titres likés : " + item.getTrack().getName());
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("❌ Erreur pendant le transfert des morceaux : " + e.getMessage());
+        }
+    }
+
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();

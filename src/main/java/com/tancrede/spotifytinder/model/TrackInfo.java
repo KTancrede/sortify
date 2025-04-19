@@ -27,12 +27,16 @@ public class TrackInfo {
     }
 
     public String getArtist() {
-    	StringBuilder sb=new StringBuilder();
-    	for (ArtistSimplified artiste : artists) {
-    		sb.append(artiste.getName());
-    	}
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < artists.length; i++) {
+            sb.append(artists[i].getName());
+            if (i < artists.length - 1) {
+                sb.append(" - "); // ajoute un tiret sauf après le dernier
+            }
+        }
         return sb.toString();
     }
+
 
     public String getPreviewUrl() {
         return previewUrl;
