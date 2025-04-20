@@ -1,6 +1,6 @@
 /* Racine de l'application */
 .root-pane {
-    -fx-background: linear-gradient(to bottom right, #75bc7f, #4aa96c);
+    -fx-background: linear-gradient(to bottom right, #0685d8, #4aa96c);
 }
 
 /* Header supérieur */
