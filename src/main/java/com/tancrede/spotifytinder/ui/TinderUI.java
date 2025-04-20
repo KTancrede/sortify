@@ -18,29 +18,77 @@ import javafx.scene.layout.*;
 import javafx.stage.Stage;
 
 import java.util.List;
+import java.util.Objects;
 
+/**
+ * Classe principale de l'UI JavaFX. Toutes les configurations CSS sont externalisées,
+ * les composants sont factorisés, et les styles en dur supprimés.
+ */
 public class TinderUI extends Application {
 
     private static TinderController controller;
+    private static final Insets STANDARD_PADDING = new Insets(10);
     private VBox leftPlaylistsBox;
     private VBox rightPlaylistsBox;
     private Label userInfoLabel;
     private VBox trackCardBox;
 
+    /**
+     * Setter statique pour injection depuis Main.java ou autre bootstrap.
+     */
     public static void setController(TinderController c) {
-        controller = c;
+        controller = Objects.requireNonNull(c, "Controller ne peut être null");
     }
 
-    // === TOP HEADER ===
+    @Override
+    public void start(Stage primaryStage) {
+        if (controller == null) {
+            throw new IllegalStateException("TinderController non initialisé: appeler TinderUI.setController(...) avant le lancement");
+        }
+
+        BorderPane root = new BorderPane();
+        root.setPadding(STANDARD_PADDING);
+        root.getStyleClass().add("root-pane");
+
+        // construction des zones
+        root.setTop(buildTopHeader());
+        root.setLeft(buildPlaylistsColumn(true));
+        root.setRight(buildPlaylistsColumn(false));
+        root.setCenter(buildTrackCardWithNavigation());
+        root.setBottom(buildPlaylistCreator());
+
+        // affichage initial de la carte de track
+        updatePlaylistsUI();
+        updateUserInfoLabel();
+        updateTrackCard();
+
+        // initialisation UI
+        updatePlaylistsUI();
+        updateUserInfoLabel();
+
+        Scene scene = new Scene(root, 1000, 600);
+        scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
+
+        primaryStage.setTitle("Sortify 🎶");
+        primaryStage.getIcons().add(new Image(
+            Objects.requireNonNull(getClass().getResourceAsStream("/images/logo.svg"))));
+        primaryStage.setScene(scene);
+        primaryStage.setMinWidth(800);
+        primaryStage.setMinHeight(500);
+        primaryStage.show();
+
+        // réagir au redimensionnement pour recalcule du track card
+        scene.widthProperty().addListener((obs, o, n) -> updateTrackCard());
+        scene.heightProperty().addListener((obs, o, n) -> updateTrackCard());
+    }
+
+    /** En-tête haut : info utilisateur + toggle auto-unlike */
     private Node buildTopHeader() {
         userInfoLabel = new Label();
-        userInfoLabel.setStyle("-fx-font-size: 16px;"); // CSS: .user-info-label
-        updateUserInfoLabel();
+        userInfoLabel.getStyleClass().add("user-info-label");
 
         ToggleButton autoUnlikeToggle = new ToggleButton("Auto-Unlike 🚫❤️");
         autoUnlikeToggle.getStyleClass().add("auto-unlike-toggle");
-
-        //autoUnlikeToggle.setStyle("-fx-font-size: 12px;"); // CSS: .auto-unlike-toggle
         autoUnlikeToggle.setSelected(false);
         autoUnlikeToggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
             controller.setAutoUnlike(newVal);
@@ -48,240 +96,154 @@ public class TinderUI extends Application {
         });
 
         Label infoIcon = new Label("ℹ️");
-        infoIcon.setStyle("-fx-font-size: 14px; -fx-cursor: hand;"); // CSS: .info-icon
-        Tooltip tooltip = new Tooltip("Si activé, la musique sera retirée des titres likés après l’avoir ajoutée à une playlist.");
-        Tooltip.install(infoIcon, tooltip);
+        infoIcon.getStyleClass().add("info-icon");
+        Tooltip.install(infoIcon, new Tooltip(
+            "Si activé, la musique sera retirée des titres likées après l’avoir ajoutée à une playlist."));
 
         Region spacer = new Region();
         HBox.setHgrow(spacer, Priority.ALWAYS);
 
         HBox topBox = new HBox(10, userInfoLabel, spacer, autoUnlikeToggle, infoIcon);
-        topBox.setPadding(new Insets(10));
+        topBox.setPadding(STANDARD_PADDING);
         topBox.setAlignment(Pos.CENTER_LEFT);
         topBox.getStyleClass().add("top-header");
+
         return topBox;
     }
 
     private void updateUserInfoLabel() {
-        userInfoLabel.setText("👋 Salut " + controller.getUserInfo().getDisplayName() +
-                " ! Tu as " + controller.getLikedTracks().size() +
-                " musiques likées et " + controller.getPlaylists().size() + " playlists.");
+        userInfoLabel.setText(String.format("👋 Salut %s ! Tu as %d musiques likées et %d playlists.",
+            controller.getUserInfo().getDisplayName(),
+            controller.getLikedTracks().size(),
+            controller.getPlaylists().size()));
     }
 
-    private Node buildLeftPlaylists() {
-        leftPlaylistsBox = new VBox(10);
-        leftPlaylistsBox.setPadding(new Insets(10));
-        leftPlaylistsBox.setAlignment(Pos.CENTER);
-        leftPlaylistsBox.getStyleClass().add("playlist-container");
-        VBox.setVgrow(leftPlaylistsBox, Priority.ALWAYS);
-        return leftPlaylistsBox;
+    /** Crée la colonne de playlists (gauche ou droite selon left=true). */
+    private Node buildPlaylistsColumn(boolean left) {
+        VBox box = new VBox(10);
+        box.setPadding(STANDARD_PADDING);
+        box.setAlignment(Pos.CENTER);
+        box.getStyleClass().add("playlist-column");
+        if (left) this.leftPlaylistsBox = box;
+        else this.rightPlaylistsBox = box;
+        VBox.setVgrow(box, Priority.ALWAYS);
+        return box;
     }
 
-    private Node buildRightPlaylists() {
-        rightPlaylistsBox = new VBox(10);
-        rightPlaylistsBox.setPadding(new Insets(10));
-        rightPlaylistsBox.setAlignment(Pos.CENTER);
-        rightPlaylistsBox.getStyleClass().add("playlist-container");
-        VBox.setVgrow(rightPlaylistsBox, Priority.ALWAYS);
-        return rightPlaylistsBox;
-    }
-
+    /** Zone de création de playlist en bas. */
     private Node buildPlaylistCreator() {
-        VBox bottomContainer = new VBox(10);
-        bottomContainer.setAlignment(Pos.CENTER_LEFT);
-        bottomContainer.setPadding(new Insets(10));
+        VBox bottom = new VBox(10);
+        bottom.setPadding(STANDARD_PADDING);
+        bottom.setAlignment(Pos.CENTER_LEFT);
+        bottom.getStyleClass().add("playlist-creator");
 
-        Button toggleFormButton = new Button("+ Créer une playlist");
-        toggleFormButton.getStyleClass().add("create-playlist-button");
+        Button toggleForm = new Button("+ Créer une playlist");
+        toggleForm.getStyleClass().add("create-playlist-button");
 
-        HBox formBox = new HBox(10);
-        formBox.setId("playlist-form");
-        formBox.setVisible(false);
-        formBox.setManaged(false);
+        HBox form = new HBox(10);
+        form.setId("playlist-form");
+        form.setVisible(false);
+        form.setManaged(false);
 
         TextField titleField = new TextField();
-        titleField.getStyleClass().add("text-field");
         titleField.setPromptText("Nom");
-        TextField descriptionField = new TextField();
-        descriptionField.getStyleClass().add("text-field");
-        descriptionField.setPromptText("Description");
+        titleField.getStyleClass().add("text-field");
+        TextField descField = new TextField();
+        descField.setPromptText("Description");
+        descField.getStyleClass().add("text-field");
         CheckBox publicBox = new CheckBox("Publique");
         publicBox.getStyleClass().add("check-box");
-        Button createButton = new Button("Créer");
-        createButton.getStyleClass().add("submit-playlist-button");
+        Button createBtn = new Button("Créer");
+        createBtn.getStyleClass().add("submit-playlist-button");
 
-        createButton.setOnAction(e -> {
+        createBtn.setOnAction(e -> {
             if (!titleField.getText().isEmpty()) {
-                controller.createNewPlaylist(titleField.getText(), descriptionField.getText(), publicBox.isSelected());
+                controller.createNewPlaylist(
+                    titleField.getText(),
+                    descField.getText(),
+                    publicBox.isSelected()
+                );
                 titleField.clear();
-                descriptionField.clear();
+                descField.clear();
                 publicBox.setSelected(false);
                 updatePlaylistsUI();
                 updateUserInfoLabel();
             }
         });
 
-        toggleFormButton.setOnAction(e -> {
-            boolean visible = !formBox.isVisible();
-            formBox.setVisible(visible);
-            formBox.setManaged(visible);
-            toggleFormButton.setText(visible ? "Retour" : "+ Créer une playlist");
+        toggleForm.setOnAction(e -> {
+            boolean show = !form.isVisible();
+            form.setVisible(show);
+            form.setManaged(show);
+            toggleForm.setText(show ? "Retour" : "+ Créer une playlist");
         });
 
-        formBox.getChildren().addAll(titleField, descriptionField, publicBox, createButton);
-        bottomContainer.getChildren().addAll(toggleFormButton, formBox);
-
-        return bottomContainer;
+        form.getChildren().addAll(titleField, descField, publicBox, createBtn);
+        bottom.getChildren().addAll(toggleForm, form);
+        return bottom;
     }
 
+    /** Répartit les playlists gauche/droite. */
     private void updatePlaylistsUI() {
         leftPlaylistsBox.getChildren().clear();
         rightPlaylistsBox.getChildren().clear();
 
-        List<PlaylistInfo> playlists = controller.getPlaylists().reversed();
-        for (int i = 0; i < playlists.size(); i++) {
-            VBox card = createPlaylistCard(playlists.get(i));
-            if (i % 2 == 0) {
-                leftPlaylistsBox.getChildren().add(card);
-            } else {
-                rightPlaylistsBox.getChildren().add(card);
-            }
+        List<PlaylistInfo> list = controller.getPlaylists().reversed();
+        for (int i = 0; i < list.size(); i++) {
+            PlaylistCard card = new PlaylistCard(list.get(i));
+            if (i % 2 == 0) leftPlaylistsBox.getChildren().add(card);
+            else rightPlaylistsBox.getChildren().add(card);
         }
     }
 
-    private VBox createPlaylistCard(PlaylistInfo playlist) {
-        VBox cardBox = new VBox(5);
-        cardBox.setAlignment(Pos.CENTER);
-        cardBox.setPrefWidth(150);
-        cardBox.setMinHeight(145);
-        cardBox.setStyle("-fx-border-color: #ccc; -fx-background-color: white; -fx-border-radius: 10; -fx-padding: 10;");
-        cardBox.getStyleClass().add("playlist-card");
+    /** Carte de playlist personnalisée. */
+    private class PlaylistCard extends VBox {
+        PlaylistCard(PlaylistInfo p) {
+            super(5);
+            getStyleClass().add("playlist-card");
+            setAlignment(Pos.CENTER);
+            setPadding(STANDARD_PADDING);
 
-        cardBox.setOnDragOver(e -> {
-            if (e.getGestureSource() != cardBox && e.getDragboard().hasString()) {
-                e.acceptTransferModes(TransferMode.MOVE);
-                cardBox.setScaleX(0.96);
-                cardBox.setScaleY(0.96);
-            }
-            e.consume();
-        });
+            ImageView iv = new ImageView(
+                p.getImageUrl() != null && !p.getImageUrl().isEmpty()
+                    ? new Image(p.getImageUrl(), 90, 90, true, true)
+                    : new Image(Objects.requireNonNull(getClass().getResourceAsStream(
+                        "/images/default_playlist.png")), 90, 90, true, true)
+            );
+            iv.setPreserveRatio(true);
 
-        cardBox.setOnDragExited(e -> {
-            cardBox.setScaleX(1.0);
-            cardBox.setScaleY(1.0);
-        });
+            Button del = createIconButton("✖", "delete-playlist-button");
+            StackPane.setMargin(del, new Insets(-8));
+            del.setOnAction(e -> confirmDelete(p));
 
-        cardBox.setOnDragDropped(e -> {
-            Dragboard db = e.getDragboard();
-            boolean success = false;
+            StackPane imgCont = new StackPane(iv, del);
+            StackPane.setAlignment(del, Pos.TOP_RIGHT);
+            imgCont.getStyleClass().add("playlist-img-container");
 
-            if (db.hasString()) {
-                String trackId = db.getString();
+            Label name = new Label(p.getName());
+            name.getStyleClass().add("playlist-label");
+            name.setWrapText(true);
 
-                controller.addTrackToPlaylist(trackId, playlist.getId());
+            initDragDrop(this, p.getId());
 
-                if (controller.isAutoUnlikeEnabled()) {
-                    controller.unlikeTrack(trackId);
-                    controller.nextTrack();
-                } else {
-                    controller.nextTrack();
-                }
-
-                updateUserInfoLabel();
-                updateTrackCard();
-                success = true;
-            }
-
-            e.setDropCompleted(success);
-            e.consume();
-        });
-
-        ImageView imageView = new ImageView(
-                playlist.getImageUrl() != null && !playlist.getImageUrl().isEmpty()
-                        ? new Image(playlist.getImageUrl(), 90, 90, true, true)
-                        : new Image(getClass().getResourceAsStream("/images/default_playlist.png"), 90, 90, true, true)
-        );
-        imageView.setPreserveRatio(false);
-
-        Button deleteButton = new Button("✖");
-        deleteButton.setStyle("-fx-background-color: transparent; -fx-text-fill: red; -fx-font-size: 16px;");
-        deleteButton.setOnMouseEntered(e -> {
-            deleteButton.setScaleX(1.4);
-            deleteButton.setScaleY(1.4);
-        });
-        deleteButton.setOnMouseExited(e -> {
-            deleteButton.setScaleX(1.0);
-            deleteButton.setScaleY(1.0);
-        });
-        deleteButton.setOnAction(e -> {
-            Alert confirm = new Alert(Alert.AlertType.CONFIRMATION);
-            confirm.setTitle("Supprimer playlist");
-            confirm.setHeaderText("Supprimer \"" + playlist.getName() + "\" ?");
-            confirm.setContentText("Tu es sûr ?");
-
-            confirm.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    Alert askAdd = new Alert(Alert.AlertType.CONFIRMATION);
-                    askAdd.setTitle("Ajouter les titres ?");
-                    askAdd.setContentText("Ajouter les titres de cette playlist à tes musiques likées ?");
-                    askAdd.getButtonTypes().setAll(ButtonType.YES, ButtonType.NO, ButtonType.CANCEL);
-
-                    askAdd.showAndWait().ifPresent(choice -> {
-                        if (choice == ButtonType.YES) {
-                            controller.transferPlaylistToLiked(playlist.getId());
-                        }
-                        if (choice != ButtonType.CANCEL) {
-                            controller.deletePlaylist(playlist.getId());
-                            updatePlaylistsUI();
-                            updateTrackCard();
-                            updateUserInfoLabel();
-                        }
-                    });
-                }
-            });
-        });
-
-        StackPane imageContainer = new StackPane(imageView, deleteButton);
-        StackPane.setAlignment(deleteButton, Pos.TOP_RIGHT);
-
-        Label label = new Label(playlist.getName());
-        label.setWrapText(true);
-        label.setMaxWidth(100);
-        label.setStyle("-fx-font-size: 12px;");
-        label.getStyleClass().add("playlist-label");
-
-        cardBox.getChildren().addAll(imageContainer, label);
-        return cardBox;
+            getChildren().addAll(imgCont, name);
+        }
     }
 
+    /** Zone centrale : track + navigation. */
     private Node buildTrackCardWithNavigation() {
-        HBox container = new HBox();
+        HBox container = new HBox(10);
+        container.setPadding(STANDARD_PADDING);
         container.setAlignment(Pos.CENTER);
-        container.setSpacing(10);
-        container.setPadding(new Insets(10));
 
-        Button prev = new Button("⬅");
-        prev.setPrefSize(40, 40);
-        prev.getStyleClass().add("nav-button");
-        prev.setOnAction(e -> {
-            controller.previousTrack();
-            updateTrackCard();
-        });
-
-        Button next = new Button("➡");
-        next.setPrefSize(40, 40);
-        next.getStyleClass().add("nav-button");
-        next.setOnAction(e -> {
-            controller.nextTrack();
-            updateTrackCard();
-        });
+        Button prev = createNavButton("⬅");
+        prev.setOnAction(e -> { controller.previousTrack(); updateTrackCard(); });
+        Button next = createNavButton("➡");
+        next.setOnAction(e -> { controller.nextTrack(); updateTrackCard(); });
 
         trackCardBox = new VBox();
+        trackCardBox.getStyleClass().add("track-card-container");
         trackCardBox.setAlignment(Pos.CENTER);
-        trackCardBox.setFillWidth(true);
-        trackCardBox.setMinWidth(100);
-        // On laisse le CSS gérer la largeur via .track-card
-        trackCardBox.setMaxWidth(Double.MAX_VALUE);
         VBox.setVgrow(trackCardBox, Priority.ALWAYS);
 
         container.getChildren().addAll(prev, trackCardBox, next);
@@ -290,111 +252,125 @@ public class TinderUI extends Application {
 
     private void updateTrackCard() {
         trackCardBox.getChildren().clear();
-
         if (controller.getLikedTracks().isEmpty()) {
             trackCardBox.getChildren().add(new Label("Aucune musique likée."));
             return;
         }
 
-        TrackInfo track = controller.getCurrentTrack();
-        ImageView cover = new ImageView(new Image(track.getImageUrl(), 120, 120, true, true));
+        TrackInfo t = controller.getCurrentTrack();
+        
+        ImageView cover = new ImageView(new Image(t.getImageUrl()));
+        cover.getStyleClass().add("track-image");
         cover.setPreserveRatio(true);
+        cover.setFitWidth(150);   // <-- ici, la largeur
+        cover.setFitHeight(150);  // <-- ici, la hauteur
 
-        Button unlikeBtn = new Button("✖");
-        unlikeBtn.getStyleClass().add("unlike-button");
-        unlikeBtn.setOnAction(e -> {
-            Alert alert = new Alert(Alert.AlertType.CONFIRMATION);
-            alert.setTitle("Supprimer musique");
-            alert.setHeaderText("Supprimer \"" + track.getTitle() + "\" de tes titres likés ?");
-            alert.showAndWait().ifPresent(response -> {
-                if (response == ButtonType.OK) {
-                    controller.unlikeTrack(track.getTrackId());
-                    updateUserInfoLabel();
-                    updateTrackCard();
-                }
-            });
-        });
+        
 
-        StackPane imageContainer = new StackPane(cover, unlikeBtn);
-        StackPane.setAlignment(unlikeBtn, Pos.TOP_RIGHT);
+        Button unlike = createIconButton("✖", "unlike-button");
+        StackPane.setMargin(unlike, new Insets(-20));
+        unlike.setOnAction(e -> confirmUnlike(t));
 
-        Label title = new Label(track.getTitle());
-        title.getStyleClass().add("track-title");
-        title.setWrapText(true);
-        title.setAlignment(Pos.CENTER);
-        title.setMaxWidth(Double.MAX_VALUE);
+        StackPane imgCont = new StackPane(cover, unlike);
+        StackPane.setAlignment(unlike, Pos.TOP_RIGHT);
+        imgCont.getStyleClass().add("track-img-container");
 
-        Label artist = new Label(track.getArtist());
-        artist.getStyleClass().add("track-artist");
-        artist.setWrapText(true);
-        artist.setAlignment(Pos.CENTER);
-        artist.setMaxWidth(Double.MAX_VALUE);
-
-        Label album = new Label("Album : " + track.getAlbum().getName());
-        album.getStyleClass().add("track-album");
-        album.setAlignment(Pos.CENTER);
-        album.setMaxWidth(Double.MAX_VALUE);
-
-        Label duration = new Label(
-            "Durée : " + String.format("%d:%02d",
-                track.getDuree() / 60000,
-                (track.getDuree() % 60000) / 1000
-            ) + " min"
-        );
+        Label title = new Label(t.getTitle()); title.getStyleClass().add("track-title");
+        Label artist = new Label(t.getArtist()); artist.getStyleClass().add("track-artist");
+        Label album = new Label("Album : " + t.getAlbum().getName()); album.getStyleClass().add("track-album");
+        Label duration = new Label(String.format("Durée : %d:%02d min", t.getDuree()/60000, (t.getDuree()%60000)/1000));
         duration.getStyleClass().add("track-duration");
-        duration.setAlignment(Pos.CENTER);
-        duration.setMaxWidth(Double.MAX_VALUE);
 
-        Button playBtn = new Button(track.getPreviewUrl() == null ? "🔇 Pas d'extrait" : "▶️ Play 5s");
-        playBtn.setDisable(track.getPreviewUrl() == null);
-        playBtn.getStyleClass().add("play-button");
+        Button play = new Button(t.getPreviewUrl() == null ? "🔇 Pas d'extrait" : "▶️ Play 5s");
+        play.getStyleClass().add("play-button");
+        play.setDisable(t.getPreviewUrl() == null);
 
-        VBox card = new VBox(10, imageContainer, title, artist, album, duration, playBtn);
-        card.setPadding(new Insets(15));
-        card.getStyleClass().add("track-card"); // Taille, max-width/height et style gérés par CSS
+        VBox card = new VBox(10, imgCont, title, artist, album, duration, play);
+        card.getStyleClass().add("track-card");
+        card.setPadding(STANDARD_PADDING);
+        initDragDrop(card, t.getTrackId());
 
-        card.setOnDragDetected(e -> {
-            Dragboard db = card.startDragAndDrop(TransferMode.MOVE);
-            ClipboardContent content = new ClipboardContent();
-            content.putString(track.getTrackId());
-            db.setContent(content);
-            e.consume();
-        });
-
-        trackCardBox.setMinHeight(Region.USE_COMPUTED_SIZE);
-        trackCardBox.setMinWidth(Region.USE_COMPUTED_SIZE);
         trackCardBox.getChildren().add(card);
     }
 
+    /* Helpers génériques */
+    private Button createNavButton(String text) {
+        Button b = new Button(text);
+        b.getStyleClass().add("nav-button");
+        b.setPrefSize(40, 40);
+        return b;
+    }
 
-    @Override
-    public void start(Stage primaryStage) {
-        BorderPane root = new BorderPane();
-        root.setPadding(new Insets(15));
-        root.getStyleClass().add("root-pane");
+    private Button createIconButton(String icon, String styleClass) {
+        Button b = new Button(icon);
+        b.getStyleClass().add(styleClass);
+        b.setPickOnBounds(true);
+        return b;
+    }
 
-        root.setTop(buildTopHeader());
-        root.setLeft(buildLeftPlaylists());
-        root.setRight(buildRightPlaylists());
-        root.setCenter(buildTrackCardWithNavigation());
-        root.setBottom(buildPlaylistCreator());
+    private void initDragDrop(Node node, String id) {
+        node.setOnDragDetected(e -> {
+            Dragboard db = node.startDragAndDrop(TransferMode.MOVE);
+            ClipboardContent content = new ClipboardContent();
+            content.putString(id);
+            db.setContent(content);
+            e.consume();
+        });
+        node.setOnDragOver(e -> {
+            if (e.getGestureSource() != node && e.getDragboard().hasString()) {
+                e.acceptTransferModes(TransferMode.MOVE);
+                node.getStyleClass().add("drag-over");
+            }
+            e.consume();
+        });
+        node.setOnDragExited(e -> node.getStyleClass().remove("drag-over"));
+        node.setOnDragDropped(e -> {
+            String trackId = e.getDragboard().getString();
+            if (trackId != null) {
+                controller.addTrackToPlaylist(trackId, id);
+                if (controller.isAutoUnlikeEnabled()) {
+                    controller.unlikeTrack(trackId);
+                    controller.nextTrack();
+                } else {
+                    controller.nextTrack();
+                }
+                updateUserInfoLabel();
+                updateTrackCard();
+                e.setDropCompleted(true);
+            }
+            e.consume();
+        });
+    }
 
-        updatePlaylistsUI();
+    private void confirmDelete(PlaylistInfo p) {
+        Alert c = new Alert(Alert.AlertType.CONFIRMATION,
+            "Supprimer '" + p.getName() + "'?", ButtonType.OK, ButtonType.CANCEL);
+        c.setHeaderText(null);
+        c.showAndWait().ifPresent(r -> {
+            if (r == ButtonType.OK) {
+                Alert ask = new Alert(Alert.AlertType.CONFIRMATION,
+                    "Ajouter les titres de cette playlist à tes musiques likées?", ButtonType.YES, ButtonType.NO);
+                ask.showAndWait().ifPresent(ch -> {
+                    if (ch == ButtonType.YES) controller.transferPlaylistToLiked(p.getId());
+                    if (ch != ButtonType.CANCEL) {
+                        controller.deletePlaylist(p.getId());
+                        updatePlaylistsUI(); updateTrackCard(); updateUserInfoLabel();
+                    }
+                });
+            }
+        });
+    }
 
-        Scene scene = new Scene(root, 1000, 600);
-        scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
-
-        primaryStage.getIcons().add(new Image(getClass().getResourceAsStream("/images/logo.svg")));
-        primaryStage.setTitle("Sortify 🎶");
-        primaryStage.setScene(scene);
-        primaryStage.setMaximized(true);
-        primaryStage.setResizable(true);
-        primaryStage.setMinWidth(800);
-        primaryStage.setMinHeight(500);
-        primaryStage.show();
-
-        scene.widthProperty().addListener((obs, oldVal, newVal) -> updateTrackCard());
-        scene.heightProperty().addListener((obs, oldVal, newVal) -> updateTrackCard());
+    private void confirmUnlike(TrackInfo t) {
+        Alert a = new Alert(Alert.AlertType.CONFIRMATION,
+            "Supprimer '" + t.getTitle() + "' de tes titres likés?", ButtonType.OK, ButtonType.CANCEL);
+        a.setHeaderText(null);
+        a.showAndWait().ifPresent(r -> {
+            if (r == ButtonType.OK) {
+                controller.unlikeTrack(t.getTrackId());
+                updateUserInfoLabel(); updateTrackCard();
+            }
+        });
     }
 
     public static void main(String[] args) {
