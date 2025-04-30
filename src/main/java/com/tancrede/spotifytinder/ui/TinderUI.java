@@ -69,7 +69,7 @@ public class TinderUI extends Application {
         Scene scene = new Scene(root, 1000, 600);
         scene.getStylesheets().add(getClass().getResource("/css/style.css").toExternalForm());
 
-        primaryStage.setTitle("Sortify 🎶");
+        primaryStage.setTitle("Sortify ");
         primaryStage.getIcons().add(new Image(
             Objects.requireNonNull(getClass().getResourceAsStream("/images/logo.svg"))));
         primaryStage.setScene(scene);
@@ -87,7 +87,7 @@ public class TinderUI extends Application {
         userInfoLabel = new Label();
         userInfoLabel.getStyleClass().add("user-info-label");
 
-        ToggleButton autoUnlikeToggle = new ToggleButton("Auto-Unlike 🚫❤️");
+        ToggleButton autoUnlikeToggle = new ToggleButton("Auto-Unlike ");
         autoUnlikeToggle.getStyleClass().add("auto-unlike-toggle");
         autoUnlikeToggle.setSelected(false);
         autoUnlikeToggle.selectedProperty().addListener((obs, oldVal, newVal) -> {
@@ -95,7 +95,7 @@ public class TinderUI extends Application {
             System.out.println("[Auto-Unlike] " + (newVal ? "Activé" : "Désactivé"));
         });
 
-        Label infoIcon = new Label("ℹ️");
+        Label infoIcon = new Label("i");
         infoIcon.getStyleClass().add("info-icon");
         Tooltip.install(infoIcon, new Tooltip(
             "Si activé, la musique sera retirée des titres likées après l’avoir ajoutée à une playlist."));
